@@ -171,9 +171,9 @@ for profile in cto pm designer dev qa ops security; do
   if hermes profile list 2>/dev/null | grep -qw "$profile"; then
     ok "profile '$profile' already exists"
   else
+    CREATE_ARGS=()
     case "$PROFILE_CREATE_SUBCOMMAND" in
       create|new)
-        CREATE_ARGS=()
         if [ "$profile" = "designer" ] || [ "$profile" = "security" ]; then
           CREATE_ARGS+=(--no-alias)
         fi
