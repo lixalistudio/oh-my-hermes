@@ -178,7 +178,7 @@ for profile in cto pm designer dev qa ops security; do
           CREATE_ARGS+=(--no-alias)
         fi
 
-        if hermes profile "$PROFILE_CREATE_SUBCOMMAND" "$profile" "${CREATE_ARGS[@]}" 2>/dev/null; then
+        if hermes profile "$PROFILE_CREATE_SUBCOMMAND" "$profile" ${CREATE_ARGS[@]+"${CREATE_ARGS[@]}"} 2>/dev/null; then
           ok "profile '$profile' created"
         else
           warn "Could not create profile '$profile' — check: hermes profile --help"
