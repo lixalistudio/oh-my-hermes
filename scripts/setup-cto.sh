@@ -363,23 +363,17 @@ if [ -n "$PRODUCTION_URL" ]; then
 else
   warn "PRODUCTION_URL not set — skipping health check cron"
   echo "         Set it and re-run, or add manually after deploy:"
-  echo "         hermes cron create --name 'oh-my-hermes health-check' --deliver local '*/15 * * * *' 'Run health-check on https://yourapp.vercel.app'"
+  echo "         hermes cron create --name 'oh-my-hermes health-check' --deliver local '*/15 * * * *' 'Run health-check on https://your-production-url.example'"
 fi
 
 if [ -n "$GITHUB_REPO" ]; then
-  ensure_cron "oh-my-hermes-product-review" "0 * * * *"     "Use failure-recovery for project ${PROJECT_SLUG:-default}: review active product work and actionable GitHub issues for $GITHUB_REPO. Keep one product outcome active and do not treat issue volume as the roadmap."
-else
-  warn "GITHUB_REPO not set — skipping product and issue review cron"
-fi
-
   ensure_cron "oh-my-hermes-product-review" "0 * * * *"     "Use failure-recovery for project ${PROJECT_SLUG:-default}: review active product work and actionable GitHub issues for $GITHUB_REPO. Keep one product outcome active and do not treat issue volume as the roadmap."
   ensure_cron "oh-my-hermes-security-daily" "30 8 * * *" \
     "Use failure-recovery for project ${PROJECT_SLUG:-default}: run security-review daily mode for $GITHUB_REPO: check tracked secret exposure and new Critical dependency advisories. Deduplicate known findings."
   ensure_cron "oh-my-hermes-security-weekly" "0 9 * * 1" \
     "Use failure-recovery for project ${PROJECT_SLUG:-default}: run security-review weekly mode for $GITHUB_REPO: full dependency, configuration, and supply-chain assessment."
->>>>>>> 9e3e68f (feat: add first-run server operating layer)
 else
-  warn "GITHUB_REPO not set — skipping scheduled security assessments"
+  warn "GITHUB_REPO not set — skipping product review and scheduled security assessments"
 fi
 
 # ── Summary ───────────────────────────────────────
