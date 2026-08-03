@@ -1,5 +1,52 @@
 # Changelog
 
+## 3.0.0 - 2026-08-03
+
+### Lixali Studio stack alignment
+
+- Replaced Vercel-first defaults with a Cloudflare-first stack:
+  - Frontends: React + Vite and Astro deployed to Cloudflare Pages
+  - Backends: Elysia (default) / Hono / NestJS deployed to Cloudflare Workers
+  - Database: Cloudflare D1 + Drizzle (default); Supabase PostgreSQL remains an option
+  - Object storage: Cloudflare R2
+  - Auth: Supabase Auth or Better Auth (Better Auth required for API keys and B2B integrations)
+  - Background workflows: Inngest
+  - Observability: Sentry (errors), Axiom (logs), Better Stack (uptime/alerting)
+- Added multi-target deployment skills:
+  - `deploy-to-cloudflare` — Pages and Workers via Wrangler
+  - `deploy-to-aws` — Elastic Beanstalk / Lambda / ECS
+  - `deploy-to-vps` — custom VPS via Shipnode (https://github.com/devalade/shipnode)
+- Added setup skills for the new stack:
+  - `setup-better-auth` — Better Auth with API-key plugin
+  - `setup-inngest` — Inngest event keys and function sync after deploy
+- Added `choose-backend-framework` — routes a backend task to Elysia, Hono, or NestJS.
+- Refactored ops skills to be target-agnostic:
+  - `health-check` — generic `/api/health` checks with platform log pulling
+  - `post-deploy-followup` — works with any deployment target
+  - `rollback` — Cloudflare / AWS / VPS rollback paths
+  - `setup-monitoring` — Sentry, Axiom, Better Stack (replaced Uptime Kuma default)
+- Added health endpoint templates for Vite, Astro, Elysia, Hono, NestJS, and
+  preserved Next.js and Express templates for legacy projects.
+- Updated `bootstrap.sh` to detect Vite, Astro, Elysia, Hono, NestJS, Express,
+  and Cloudflare Workers, and to create the appropriate health endpoint and
+  `.env.example`.
+- Updated `AGENTS.md.template`, `.env.example`, and `templates/` to document
+  the Lixali stack, Inngest, and Better Auth conventions.
+- Updated docs: README, architecture, engines, workflows, setup-guide,
+  installation.
+- Updated `install.sh`, `verify.sh`, and `validate-skills.sh` to account for the
+  new and renamed skills.
+
+### Breaking
+
+- The default deployment target is no longer Vercel. Existing projects using
+  `deploy-to-vercel` must set `DEPLOYMENT_TARGET=vercel` or migrate to the new
+  Cloudflare/AWS/VPS skills.
+- `setup-monitoring` no longer defaults to Uptime Kuma; it now configures
+  Sentry, Axiom, and Better Stack.
+
+---
+
 ## 2.0.0 - 2026-06-19
 
 ### Product-building lifecycle

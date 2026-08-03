@@ -18,12 +18,12 @@ previous run, and escalates only actionable changes.
 
 - On the scheduled production observation interval.
 - After a deployment or recovery.
-- When health checks, users, Sentry, Vercel, or Supabase report a problem.
+- When health checks, users, Sentry, Cloudflare, Supabase, or Better Stack report a problem.
 
 ## Prerequisites
 
 - Production URL and provider project identifiers.
-- Authenticated Vercel, Sentry, or Supabase tooling as applicable.
+- Authenticated Wrangler (Cloudflare), AWS CLI, or SSH access to VPS as applicable.
 - Hermes memory access for the observation cursor and fingerprints.
 
 ## Procedure

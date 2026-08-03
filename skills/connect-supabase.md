@@ -7,13 +7,13 @@ tags: [supabase, database, setup, migrations]
 
 ## Overview
 
-Links Supabase to the project, sets environment variables locally and in Vercel, pushes migrations.
+Links Supabase to the project, sets environment variables locally and in the target platform, pushes migrations.
 
 ## When to Use
 
 - First-time Supabase connection for this project
 - New migrations to push to the live database
-- Supabase env vars missing from Vercel
+- Supabase env vars missing from the deployment target
 
 ## Prerequisites
 
@@ -35,15 +35,26 @@ Add to `.env.local` (values from Supabase dashboard → Settings → API):
 SUPABASE_URL=https://[ref].supabase.co
 SUPABASE_ANON_KEY=[anon-key]
 SUPABASE_SERVICE_KEY=[service-role-key]
-DATABASE_URL=postgresql://postgres:[password]@db.[ref].supabase.co:5432/postgres
+DATABASE_URL=postgresql://postgres:***@db.[ref].supabase.co:5432/postgres
 ```
 
-Add vars to Vercel:
+Add vars to the target platform:
+
+For Cloudflare Pages/Workers:
 ```bash
-vercel env add SUPABASE_URL production
-vercel env add SUPABASE_ANON_KEY production
-vercel env add SUPABASE_SERVICE_KEY production
-vercel env add DATABASE_URL production
+wrangler secret put SUPABASE_URL
+wrangler secret put SUPABASE_ANON_KEY
+wrangler secret put SUPABASE_SERVICE_KEY
+wrangler secret put DATABASE_URL
+```
+
+For AWS / VPS:
+```bash
+# Add to the platform environment or .env on the server
+SUPABASE_URL=...
+SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_KEY=...
+DATABASE_URL=...
 ```
 
 Push migrations:

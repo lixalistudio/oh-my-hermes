@@ -15,20 +15,26 @@ tags: [setup, server, telegram, bootstrap, first-run]
 
 - SSH access to the server.
 - A Telegram bot token or permission to prompt for it securely on the server.
-- Optional repo and production URL.
+- Optional repo, production URL, and deployment target (`cloudflare` default, `aws`, `vps`).
 
 ## Procedure
 
 1. If replacing an existing agent, first run `reset-runtime` with backup.
-2. Run:
+2. Install target CLIs on the server:
+   - Cloudflare: `npm install -g wrangler inngest-cli`
+   - AWS (optional): `npm install -g aws-cdk` or `apt install awscli`
+   - Shipnode (optional): `npm install -g shipnode`
+3. Run:
    ```bash
    ~/.hermes/scripts/server-bootstrap.sh --project myapp --repo owner/repo --telegram
    ```
-3. If the script prompts for a token, enter it in the terminal only. Never paste
+4. If the script prompts for a token, enter it in the terminal only. Never paste
    tokens into chat.
-4. Send a Telegram message to the bot: `status`.
-5. Run `project-status` and then start from the current product outcome or use
+5. Send a Telegram message to the bot: `status`.
+6. Run `project-status` and then start from the current product outcome or use
    `ship-this-idea`.
+7. Set `DEPLOYMENT_TARGET` in the environment or Hermes memory to `cloudflare`,
+   `aws`, or `vps`.
 
 ## Pitfalls
 

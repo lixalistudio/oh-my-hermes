@@ -1,73 +1,106 @@
 ---
 name: setup-monitoring
-description: Use when a newly deployed app has no error tracking or uptime monitoring configured
-version: 1.0.0
-tags: [monitoring, sentry, uptime, ops]
+description: Use when a newly deployed app has no error tracking, log aggregation, or uptime alerting configured
+version: 2.0.0
+tags: [monitoring, sentry, axiom, better-stack, ops]
+metadata:
+  hermes:
+    tags: [monitoring, sentry, axiom, better-stack, ops]
+    related_skills: [deploy-to-cloudflare, deploy-to-aws, deploy-to-vps, health-check]
 ---
 
 ## Overview
 
-Installs Sentry for error tracking and documents Uptime Kuma setup. Run once per project after first deploy.
+Configures Sentry for error tracking, Axiom for log aggregation, and Better Stack
+for uptime/alerting. Run once per project after first deploy.
 
 ## When to Use
 
-- First deployment to Vercel is complete
-- App has no Sentry DSN configured
+- First deployment is complete
+- App has no Sentry DSN, Axiom token, or Better Stack URL configured
 - `monitoring-config` not in Hermes memory
 
 ## Prerequisites
 
-- App deployed to Vercel with working `/api/health` endpoint
+- App deployed with working `/api/health` endpoint
 - Sentry account at sentry.io
-- `SLACK_WEBHOOK_URL` available
+- Axiom account at axiom.co
+- Better Stack account at betterstack.com
+- `SLACK_WEBHOOK_URL` or Telegram credentials available for alerts
 
 ## Procedure
 
 **Sentry (error tracking):**
-```bash
-npm install @sentry/nextjs
-npx @sentry/wizard@latest -i nextjs
-```
 
-The wizard creates `sentry.client.config.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`, and patches `next.config.js`. Review diff before committing.
+For Cloudflare Workers / Pages:
+```bash
+npm install toucan-js
+```
+Configure Sentry in the Worker entrypoint using `toucan-js` and the `SENTRY_DSN`.
+
+For Vite / Astro / Node.js backends:
+```bash
+npm install @sentry/react          # Vite/React frontend
+# or
+npm install @sentry/astro          # Astro
+# or
+npm install @sentry/node            # Node.js backend
+```
 
 Add to `.env.local`:
 ```
 SENTRY_DSN=your-dsn-from-sentry-dashboard
-SENTRY_AUTH_TOKEN=your-auth-token
+SENTRY_AUTH_TOKEN=your-auth-token   # for source map uploads
 ```
 
-Add to Vercel:
+For Cloudflare Workers/Pages, set via `wrangler secret put`:
 ```bash
-vercel env add SENTRY_DSN production
-vercel env add SENTRY_AUTH_TOKEN production
+wrangler secret put SENTRY_DSN
+wrangler secret put SENTRY_AUTH_TOKEN
 ```
 
-**Uptime Kuma (if VPS available):**
+**Axiom (log aggregation):**
+
 ```bash
-docker run -d --restart=always -p 3001:3001 \
-  -v uptime-kuma:/app/data --name uptime-kuma louislam/uptime-kuma:1
+npm install @axiomhq/js
 ```
 
-In Uptime Kuma UI:
-1. Add monitor → HTTP(s)
-2. URL: `https://[your-app].vercel.app/api/health`
-3. Heartbeat interval: 60 seconds
-4. Add Slack notification with `SLACK_WEBHOOK_URL`
+Add to `.env.local`:
+```
+AXIOM_TOKEN=your-axiom-token
+AXIOM_DATASET=your-axiom-dataset
+```
 
-No VPS: use Better Uptime (betteruptime.com) free tier.
+For Cloudflare Workers, send structured logs via Axiom's fetch API or use the
+Axiom Cloudflare Workers integration from the dashboard.
 
-Save to Hermes memory: key `monitoring-config`, value `{ sentry: true, uptimeKuma: [url-or-null], slackAlert: true }`.
+For VPS, install the Axiom shipper or forward structured stdout.
+
+**Better Stack (uptime + alerting):**
+
+1. Create a heartbeat monitor in Better Stack dashboard.
+2. Copy the heartbeat URL to `BETTER_STACK_URL`.
+3. Add a cron job or scheduled Inngest function to ping the URL every minute.
+4. Add Slack/Telegram notification in Better Stack dashboard for incidents.
+
+Example ping (add to a cron or Inngest scheduled function):
+```bash
+curl -s "$BETTER_STACK_URL" -o /dev/null -w "%{http_code}"
+```
+
+Save to Hermes memory: key `monitoring-config`, value `{ sentry: true, axiom: true, betterStack: true }`.
 
 ## Pitfalls
 
-- The Sentry wizard modifies `next.config.js` with `withSentryConfig` wrapper. Review before committing.
-- Test Sentry in dev before deploying — trigger a deliberate error, confirm it appears in the dashboard.
-- Uptime Kuma alerts fire after the first failed poll (60s interval), not immediately.
+- Do not enable Sentry in local development by default; gate it with `NODE_ENV`.
+- Axiom token has write access; never expose it to the client.
+- Better Stack heartbeat URL is not a secret, but do not log it publicly.
+- Test Sentry in a preview environment before production by triggering a deliberate error.
 
 ## Verification
 
-- `SENTRY_DSN` in Vercel env vars
+- `SENTRY_DSN` in target platform env vars
 - Test error appears in Sentry dashboard
-- Uptime Kuma shows monitor as "Up"
+- Axiom shows logs from the deployed environment
+- Better Stack shows monitor as "Up" and can trigger an alert
 - `monitoring-config` saved to Hermes memory

@@ -1,17 +1,19 @@
 ---
 name: health-check
 description: Use when a deployed app needs to be verified as running, after every deployment, or on-demand to confirm availability
-version: 1.1.0
-tags: [health, monitoring, ops, supabase, vercel]
+version: 2.0.0
+tags: [health, monitoring, ops, cloudflare, aws, vps]
 metadata:
   hermes:
-    tags: [health, monitoring, supabase, vercel-logs]
+    tags: [health, monitoring, ops]
     requires_toolsets: [terminal, web]
 ---
 
 ## Overview
 
-Three-layer check: app endpoint → Supabase connection → Vercel recent logs. Reports a full picture, not just "is it up."
+Three-layer check: app endpoint → dependencies (database / Inngest / auth) →
+platform logs. Reports a full picture, not just "is it up." Works across
+Cloudflare, AWS, and VPS targets.
 
 ## When to Use
 
@@ -22,8 +24,8 @@ Three-layer check: app endpoint → Supabase connection → Vercel recent logs. 
 ## Prerequisites
 
 - Deployed app URL (from Hermes memory key `last-deployment-url`, or provided directly)
-- `SUPABASE_URL` in environment (for Supabase check)
-- Vercel CLI logged in (for log pull)
+- `deployment-target` in Hermes memory or environment (`cloudflare`, `aws`, `vps`, or `vercel` for legacy)
+- CLI credentials for the target platform (Wrangler for Cloudflare, AWS CLI for AWS, SSH for VPS)
 
 ## Procedure
 
@@ -40,29 +42,44 @@ Validate:
 - Response time < 3000ms (warn if > 1000ms)
 
 On 404 → health endpoint missing, run `bootstrap.sh`.
-On timeout → retry once (Vercel cold start), then fail.
+On timeout → retry once (cold start), then fail.
 
-### 2. Supabase connection check
+### 2. Dependency check
 
+Check whichever dependencies the project uses:
+
+- **D1 / Drizzle backend:** run a quick query via Wrangler or the app's own test endpoint.
+- **Supabase:**
+  ```bash
+  curl -s -o /dev/null -w "%{http_code}" \
+    "$SUPABASE_URL/rest/v1/" \
+    -H "apikey: $SUPABASE_ANON_KEY"
+  ```
+  - HTTP 200 → reachable
+  - HTTP 401/403 → reachable but key issue
+  - Timeout / 5xx → Supabase incident — check status.supabase.com
+- **Inngest:** check the Inngest dashboard shows the app as connected.
+- **Better Auth:** verify `/api/auth/session` or a known auth endpoint returns an expected response.
+
+### 3. Platform logs
+
+Pull the last 50 lines from the active target:
+
+**Cloudflare Workers/Pages:**
 ```bash
-curl -s -o /dev/null -w "%{http_code}" \
-  "$SUPABASE_URL/rest/v1/" \
-  -H "apikey: $SUPABASE_ANON_KEY"
+wrangler tail --format=pretty --limit=50
 ```
 
-- HTTP 200 → Supabase reachable
-- HTTP 401/403 → reachable but key issue
-- Timeout / 5xx → Supabase incident — check status.supabase.com
-
-Also check DB query latency if `DATABASE_URL` is set:
+**AWS:**
 ```bash
-psql "$DATABASE_URL" -c "SELECT 1" -t -A 2>&1
+aws logs tail /aws/elasticbeanstalk/$AWS_EB_ENVIRONMENT_NAME/var/log/web.stdout.log --follow=false
+# or Lambda:
+aws logs tail /aws/lambda/$AWS_LAMBDA_FUNCTION_NAME --follow=false
 ```
 
-### 3. Vercel logs (last 50 lines)
-
+**VPS:**
 ```bash
-vercel logs [deployment-url] --limit 50
+ssh -i $SHIPNODE_SSH_KEY_PATH $SHIPNODE_USER@$SHIPNODE_HOST "journalctl -u $SHIPNODE_PROJECT_NAME -n 50 --no-pager"
 ```
 
 Scan for:
@@ -79,8 +96,9 @@ Flag any of these in the report. Do not flood the founder — summarize ("3 erro
 Health check — [timestamp]
 ────────────────────────────────────
 App endpoint:   PASS / FAIL  ([ms]ms)
-Supabase:       PASS / FAIL
-Vercel logs:    CLEAN / [n] errors detected
+Dependencies:   PASS / FAIL
+Platform logs:  CLEAN / [n] errors detected
+Target:         [cloudflare|aws|vps]
 
 [If anything failed or logged errors:]
   Details: [plain-English summary]
@@ -89,17 +107,18 @@ Vercel logs:    CLEAN / [n] errors detected
 
 ### 5. On any FAIL
 
-- Save to Hermes memory: key `health-failure-log`, append `{ timestamp, layer, detail }`
+- Save to Hermes memory: key `health-failure-log`, append `{ timestamp, layer, detail, target }`
 - Load `send-notification` with failure summary
-- If Vercel logs show 500s: pull more logs and identify the failing route
-- If Supabase down: check status.supabase.com, notify founder, do not attempt DB operations
+- If logs show 500s: pull more logs and identify the failing route
+- If a provider is down: check the provider status page, notify founder, do not attempt operations against it
 
 ## Pitfalls
 
-- Vercel cold starts cause slow first requests — always retry once before failing.
-- Supabase has its own status page (status.supabase.com) — check it before alerting, the issue may be on their end.
-- `vercel logs` requires the deployment URL, not the alias. Get it from memory key `last-deployment-url`.
-- Do not report Vercel log noise (routine 200s, OPTIONS requests) as errors.
+- Cold starts cause slow first requests — always retry once before failing.
+- Cloudflare `wrangler tail` requires the project to be linked; run `wrangler login` first.
+- VPS logs may not exist if the project is not running as a systemd service or PM2 process.
+- Do not report platform noise (routine 200s, OPTIONS requests) as errors.
+- Absence of logs is not proof of health; pair with the endpoint check.
 
 ## Verification
 

@@ -25,6 +25,22 @@ request is evidence inside the build stage, not the goal.
   meaningful outcomes.
 - Feed production and growth learning back into the next product decision.
 
+## Default Stack (Lixali Studio)
+
+- Frontends: React + Vite for web apps, Astro for marketing/blogs, both deployed
+  to Cloudflare Pages.
+- Backends: Elysia by default (Hono or NestJS alternatives), deployed to
+  Cloudflare Workers for light backends and MVPs.
+- Database: Cloudflare D1 + Drizzle; Supabase PostgreSQL when the project needs
+  Postgres features.
+- Storage: Cloudflare R2.
+- Auth: Supabase Auth for simple auth; Better Auth for B2B and API keys.
+- Workflows: Inngest for async jobs and scheduled functions.
+- Observability: Sentry (errors), Axiom (logs), Better Stack (uptime/alerting).
+
+When a project does not fit Cloudflare, use AWS or VPS via their dedicated skills.
+Keep the target recorded in Hermes memory under `deployment-target`.
+
 ## Lifecycle
 
 ```text

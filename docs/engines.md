@@ -17,6 +17,15 @@ Cross-module feature, architecture, or broad refactor
 
 Launch motion graphics from product evidence
   -> Designer + HyperFrames through creative-production
+
+Cloudflare-first deployment (default Lixali)
+  -> deploy-to-cloudflare (Pages for frontends, Workers for backends)
+
+AWS deployment when Cloudflare is not suitable
+  -> deploy-to-aws (Beanstalk / Lambda / ECS)
+
+Custom VPS deployment
+  -> deploy-to-vps via Shipnode
 ```
 
 ## Hermes

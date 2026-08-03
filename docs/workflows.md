@@ -35,7 +35,8 @@ clarify-requirements (only if needed)
 -> choose-engine + implement
 -> security-review + Reviewer
 -> founder approval
--> deploy-to-vercel
+-> deploy-to-cloudflare | deploy-to-aws | deploy-to-vps
+-> setup-inngest (if workflows exist)
 -> post-deploy-followup + observe-logs
 ```
 
@@ -47,8 +48,17 @@ design notes may be supplied but are not required.
 
 ## Deploy And Monitor
 
-Deploy, connect required services, configure monitoring, run the health check,
-then observe the first log window. Availability and logs remain separate signals.
+Deploy to the configured target (Cloudflare default, AWS/VPS alternatives),
+connect required services (Supabase, Better Auth, Inngest), configure
+monitoring, run the health check, then observe the first log window.
+Availability and logs remain separate signals.
+
+## Inngest Workflows
+
+Projects that run Inngest functions must follow the deploy-and-monitor workflow
+with an extra step: sync functions after the target deployment. Inngest
+functions are triggered by events and scheduled jobs; they are not a replacement
+for synchronous API routes.
 
 ## GitHub Ops
 

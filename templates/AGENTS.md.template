@@ -14,29 +14,36 @@ Keep this to 3-5 sentences. Agents read this to understand project context befor
 
 ```bash
 npm install         # install dependencies
-npm run dev         # start development server (localhost:3000)
+npm run dev         # start development server
 npm run build       # production build
 npm run typecheck   # TypeScript check — run after every change
 npm run lint        # lint
+npm run db:generate # generate Drizzle migrations (backend projects)
+npm run db:seed     # seed the database (backend projects)
 ```
 
-TODO: Add any project-specific commands (database migrations, seed scripts, etc.)
+TODO: Add any project-specific commands (database migrations, seed scripts, Inngest dev, etc.)
 
-## Architecture
+## Stack
 
-TODO: Describe data flow, service ownership, and key architectural decisions.
+This project follows the Lixali Studio conventions:
 
-Example structure:
-- Frontend: Next.js App Router at /app
-- Database: Supabase PostgreSQL with Row Level Security
-- Auth: Supabase Auth (email + OAuth)
-- Storage: Supabase Storage for file uploads
-- Deployment: Vercel (main → production, branches → preview)
+- **Frontend:** React 18/19 + Vite (web apps); Astro (marketing sites, blogs, landing pages)
+- **Backend:** Elysia (default), Hono, or NestJS
+- **Runtime:** Cloudflare Pages (frontends), Cloudflare Workers (light backends, MVPs)
+- **Database:** Cloudflare D1 + Drizzle (default on Workers); Supabase PostgreSQL when needed
+- **Auth:** Supabase Auth for simple auth; Better Auth for B2B, API keys, multi-provider, or fine-grained permissions
+- **Workflows:** Inngest (async jobs, scheduled functions, webhooks)
+- **Object storage:** Cloudflare R2
+- **Architecture:** NestJS-inspired structure (modules, controllers, services, repositories, factories)
+- **Observability:** Sentry (errors), Axiom (logs), Better Stack (uptime/alerting)
+- **Alternative targets:** AWS or custom VPS via Shipnode (`deploy-to-vps`) when Cloudflare is not suitable
 
 Key decisions to document:
-- Where is the source of truth for the database schema? (supabase/migrations/)
-- Which services communicate with each other and how?
-- What are the critical data flows?
+- Where is the source of truth for the database schema? (`src/db/schema.ts` or `supabase/migrations/`)
+- Which Inngest functions are critical and where do they live? (`src/inngest/`)
+- Which services communicate with each other and how? (direct API calls, Inngest events, queues)
+- Which auth provider is used and why?
 
 ## Security Baseline
 
@@ -44,12 +51,13 @@ Agents must follow these requirements for all changes:
 
 - Validate all input on the server — never trust client-provided data
 - Never trust client-provided identity, scope, or permissions
-- Use Supabase RLS for row-level data isolation — every table needs a policy
-- Store secrets in .env.local — never commit credentials or keys
-- No secrets in logs, error messages, or API responses
 - Enforce auth/authz explicitly on every API route
-- Never expose SUPABASE_SERVICE_KEY to the client
+- Use row-level isolation (D1 with userId checks, or Supabase RLS) on every table
+- Store secrets in `.env.local` — never commit credentials or keys
+- No secrets in logs, error messages, or API responses
+- Never expose `SUPABASE_SERVICE_KEY`, `BETTER_AUTH_SECRET`, `CLOUDFLARE_API_TOKEN`, or `INNGEST_SIGNING_KEY` to the client
 - Follow OWASP Top 10
+- Scan `git diff --staged` for secrets before every commit
 
 ## Engine Guidance
 
@@ -62,22 +70,55 @@ Agents must follow these requirements for all changes:
 
 ## Monitoring
 
-- Health endpoint: GET /api/health → { status: "ok", version, timestamp }
+- Health endpoint: `GET /api/health` → `{ status: "ok", version, timestamp }` (frontends expose the same shape on `/api/health` or a static path configured in the platform)
 - Error tracking: Sentry (SENTRY_DSN in environment)
-- Uptime monitoring: Uptime Kuma polling /api/health every 60 seconds
-- Alerts: Slack webhook (SLACK_WEBHOOK_URL in environment)
+- Log aggregation: Axiom (AXIOM_TOKEN, AXIOM_DATASET)
+- Uptime/alerting: Better Stack (BETTER_STACK_URL or heartbeat URL)
+- Alerts: Slack webhook (SLACK_WEBHOOK_URL) or Telegram
 
 ## Deployment
 
-- Platform: Vercel
-- Production: main branch → automatic deploy on push
-- Preview: any other branch → automatic preview deployment
-- Environment variables: set in Vercel dashboard (not committed to git)
-- Database migrations: supabase/migrations/ — pushed via `supabase db push`
+Default Lixali target is Cloudflare:
+
+- **Frontend:** Cloudflare Pages — `npm run deploy` via Wrangler
+- **Backend:** Cloudflare Workers — `npm run deploy` via Wrangler
+- **Production:** `main` branch pushes trigger automatic deployment after checks pass
+- **Preview:** branches and pull requests get preview URLs via Cloudflare Pages/Workers
+
+Alternative targets (use the matching skill):
+
+- **AWS:** `deploy-to-aws` (Elastic Beanstalk, Lambda, or ECS depending on project)
+- **Custom VPS:** `deploy-to-vps` using [Shipnode](https://github.com/devalade/shipnode)
+
+Environment variables are set in the platform dashboard (Cloudflare Pages/Workers, AWS, or VPS) — never committed to git.
+
+## Database & Migrations
+
+For Cloudflare D1 + Drizzle backend:
+
+- Schema source of truth: `src/db/schema.ts`
+- Migrations: `migrations/` at project root (Wrangler compatibility)
+- Generate: `npm run db:generate`
+- Apply locally: `npm run db:migrate:local`
+- Apply to remote: `npm run db:migrate:prod`
+- Seed: `npm run db:seed` (manual script, never auto-seed on dev startup)
+
+For Supabase:
+
+- Migrations: `supabase/migrations/`
+- Push: `supabase db push`
+
+## Workflows (Inngest)
+
+- Inngest functions live in `src/inngest/`
+- Local dev: `npx inngest-cli@latest dev` (or `npm run inngest:dev`)
+- Production: sync functions via `inngest-cli` or the Inngest dashboard after Worker/Pages deployment
+- Critical functions must be idempotent and retry-aware
 
 ## Commit Conventions
 
 - One commit per meaningful change (one feature, one fix, one refactor)
-- Never commit .env.local or any file with real credentials
+- Never commit `.env.local` or any file with real credentials
 - Always run `npm run typecheck` before committing
-- Commit AGENTS.md changes alongside the code changes they document
+- Commit `AGENTS.md` changes alongside the code changes they document
+- Keep commits in English for consistency across the team

@@ -64,8 +64,8 @@ bash /path/to/oh-my-hermes/scripts/bootstrap.sh
 
 Creates:
 - `AGENTS.md` — review and fill in the Architecture and Engine Guidance sections
-- `.env.example` — all expected variables with placeholder values
-- `src/app/api/health/route.ts` — working `/health` endpoint when the project is detected as Next.js App Router
+- `.env.example` — all expected variables with placeholder values for Cloudflare, Supabase, Better Auth, Inngest, AWS/VPS alternatives, and monitoring
+- A health endpoint tailored to the detected framework: Vite, Astro, Elysia, Hono, NestJS, or Express (legacy Next.js also supported)
 
 Bootstrap is idempotent. Existing files are not overwritten.
 
@@ -75,14 +75,21 @@ Bootstrap is idempotent. Existing files are not overwritten.
 
 Copy `.env.example` to `.env.local` and fill in real values.
 
-Required for deployment:
+Required for Cloudflare (default Lixali target):
 ```
-VERCEL_TOKEN=
-VERCEL_ORG_ID=
-VERCEL_PROJECT_ID=
+CLOUDFLARE_API_TOKEN=
+CLOUDFLARE_ACCOUNT_ID=
+CLOUDFLARE_ZONE_ID=          # only if custom domain
+WRANGLER_API_TOKEN=
 ```
 
-Required for database:
+Required for D1 database (Elysia/Hono backend templates):
+```
+D1_DATABASE_ID=
+D1_DATABASE_NAME=
+```
+
+Required for Supabase (when used instead of D1):
 ```
 SUPABASE_URL=
 SUPABASE_ANON_KEY=
@@ -90,9 +97,42 @@ SUPABASE_SERVICE_KEY=
 DATABASE_URL=
 ```
 
-Required for notifications:
+Required for Better Auth (B2B, API keys, multi-provider):
 ```
-SLACK_WEBHOOK_URL=
+BETTER_AUTH_SECRET=
+BETTER_AUTH_URL=
+```
+
+Required for Inngest workflows:
+```
+INNGEST_EVENT_KEY=
+INNGEST_SIGNING_KEY=
+INNGEST_API_URL=             # local: http://127.0.0.1:8288
+```
+
+Required for monitoring:
+```
+SENTRY_DSN=
+SENTRY_AUTH_TOKEN=           # for source maps
+AXIOM_TOKEN=
+AXIOM_DATASET=
+BETTER_STACK_URL=             # heartbeat URL
+```
+
+Optional alternative targets:
+```
+# AWS (Elastic Beanstalk / Lambda / ECS)
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_REGION=
+AWS_DEPLOYMENT_TARGET=
+
+# Custom VPS via Shipnode
+SHIPNODE_HOST=
+SHIPNODE_USER=
+SHIPNODE_SSH_KEY_PATH=
+SHIPNODE_PROJECT_NAME=
+SHIPNODE_REPO=
 ```
 
 Never commit `.env.local`. Only `.env.example` (with placeholder values) is committed.

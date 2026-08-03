@@ -84,8 +84,27 @@ hermes gateway setup     # choose Slack, follow OAuth flow
 
 ## Step 4 — Install CLIs
 
+### Required for Cloudflare (default Lixali target)
+
 ```bash
-# GitHub CLI
+# Wrangler CLI
+npm install -g wrangler
+wrangler login          # opens browser, or use CLOUDFLARE_API_TOKEN for CI/VPS
+
+# Inngest dev server (for workflows)
+npm install -g inngest-cli
+```
+
+### Supabase CLI (if using Supabase)
+
+```bash
+npm install -g supabase
+supabase login
+```
+
+### GitHub CLI
+
+```bash
 curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list
 sudo apt update && sudo apt install gh -y
@@ -104,14 +123,21 @@ gh auth status   # confirm: Logged in to github.com as [your-username]
 # Also set it as an env var so skills can use it directly:
 echo 'export GITHUB_TOKEN="YOUR_GITHUB_TOKEN"' >> ~/.bashrc
 source ~/.bashrc
+```
 
-# Vercel CLI
-npm install -g vercel
-vercel login
+### Alternative targets
 
-# Supabase CLI (if using Supabase)
-npm install -g supabase
-supabase login
+AWS CLI (if using `deploy-to-aws`):
+```bash
+npm install -g aws-cdk
+# or: apt install awscli
+aws configure
+```
+
+Shipnode (if using `deploy-to-vps`):
+```bash
+npm install -g shipnode
+# See: https://github.com/devalade/shipnode
 ```
 
 ---
@@ -139,7 +165,8 @@ This creates real Hermes profiles for each agent, initializes the kanban board, 
 export GITHUB_TOKEN=your-fine-grained-token
 export GITHUB_USERNAME=your-github-username
 export GITHUB_REPO=owner/repo
-export PRODUCTION_URL=https://yourapp.vercel.app   # optional but recommended
+export PRODUCTION_URL=https://yourapp.pages.dev   # optional but recommended
+export DEPLOYMENT_TARGET=cloudflare               # or aws / vps
 
 OH_MY_HERMES_SETUP_CTO_CONFIRM=1 bash /path/to/oh-my-hermes/scripts/setup-cto.sh
 ```
@@ -197,7 +224,7 @@ bash /path/to/oh-my-hermes/scripts/bootstrap.sh
 This creates:
 - `AGENTS.md` — fill in your project name, stack, and any constraints
 - `.env.example` — fill in and copy to `.env.local`
-- `src/app/api/health/route.ts` — the `/api/health` endpoint Hermes checks after every deploy (created only when Next.js is detected)
+- A health endpoint tailored to the detected framework (Vite, Astro, Elysia, Hono, NestJS, or Express)
 
 **Fill in AGENTS.md.** This is important — it tells the Dev Agent what stack to use and what conventions to follow.
 
@@ -213,19 +240,52 @@ Required minimum:
 # Create at: github.com → Settings → Developer settings → Personal access tokens → Fine-grained
 # Permissions needed: Contents (R/W), Issues (R/W), Pull requests (R/W), Metadata (R)
 GITHUB_TOKEN=your-fine-grained-token
-GITHUB_USERNAME=your-github-username     # used when Hermes assigns issues to itself
+GITHUB_USERNAME=your-github-username     # used when assigning issues to Hermes
 GITHUB_REPO=owner/repo                   # the repo the CTO loop manages
 
-# Vercel
-VERCEL_TOKEN=             # vercel.com → Account Settings → Tokens
+# Cloudflare (default target)
+CLOUDFLARE_API_TOKEN=                    # dash.cloudflare.com → My Profile → API Tokens
+CLOUDFLARE_ACCOUNT_ID=                   # dash.cloudflare.com → Workers & Pages → Overview
+WRANGLER_API_TOKEN=                      # same scope as CLOUDFLARE_API_TOKEN
+
+# Alternative targets (use only the one you need)
+DEPLOYMENT_TARGET=cloudflare             # or aws / vps
+AWS_ACCESS_KEY_ID=                       # if DEPLOYMENT_TARGET=aws
+SHIPNODE_HOST=                           # if DEPLOYMENT_TARGET=vps
+
+# Notifications
 SLACK_WEBHOOK_URL=        # leave empty if using Telegram only
+TELEGRAM_BOT_TOKEN=       # leave empty if using Slack only
+TELEGRAM_CHAT_ID=         # leave empty if using Slack only
 ```
 
-Add to Vercel for production:
+Add to Cloudflare Pages/Workers dashboard after first deploy:
 ```bash
-vercel env add SENTRY_DSN production        # after setup-monitoring
-vercel env add SUPABASE_URL production      # after connect-supabase
+# Supabase (if used)
+SUPABASE_URL=
+SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_KEY=
+DATABASE_URL=
+
+# Better Auth (if used)
+BETTER_AUTH_SECRET=
+BETTER_AUTH_URL=
+
+# Inngest (if used)
+INNGEST_EVENT_KEY=
+INNGEST_SIGNING_KEY=
+
+# Monitoring
+SENTRY_DSN=
+SENTRY_AUTH_TOKEN=
+AXIOM_TOKEN=
+AXIOM_DATASET=
+BETTER_STACK_URL=
 ```
+
+For Cloudflare Workers/Pages, environment variables are configured in the
+Cloudflare dashboard or via `wrangler secret put`. For AWS/VPS, follow the
+platform-specific skill.
 
 ---
 
@@ -281,12 +341,25 @@ hermes cron status
 
 **Health check always failing:**
 - Check that `/api/health` returns `{ "status": "ok" }` with HTTP 200
-- Check Vercel function logs in the dashboard
+- Check Cloudflare Workers/Pages logs in the dashboard or via `wrangler tail`
+- Verify `APP_URL` / `BETTER_AUTH_URL` / `INNGEST_API_URL` point to the deployed URL, not localhost
 - Check the URL saved in memory: retrieve `last-deployment-url`
 
-**Build failing on Vercel but passing locally:**
-- Compare Node.js version: `node --version` vs Vercel project settings
-- Check Vercel env vars match your `.env.local`
+**Build failing on Cloudflare but passing locally:**
+- Compare Node.js version: `node --version` vs `wrangler` Node compatibility
+- Check that environment variables are set in the Cloudflare dashboard or via `wrangler secret put`
+- For Workers, ensure `wrangler.jsonc` bindings (D1, R2, KV) match the remote resources
+- For Pages, verify `Functions` directory or adapter configuration
+
+**Inngest functions not triggering after deploy:**
+- Check the Inngest dashboard shows the sync from the deployed URL
+- Verify `INNGEST_SIGNING_KEY` and `INNGEST_EVENT_KEY` are set in the platform
+- Run `npx inngest-cli@latest dev` locally and fire a test event
+
+**Shipnode/VPS deployment issues:**
+- Confirm SSH key access: `ssh -i $SHIPNODE_SSH_KEY_PATH $SHIPNODE_USER@$SHIPNODE_HOST`
+- Check Shipnode project name matches the remote config
+- See: https://github.com/devalade/shipnode
 
 ---
 
@@ -295,6 +368,6 @@ hermes cron status
 If you want to try the approval loop without the full CTO automation:
 
 1. Steps 1–5 (Hermes + messaging + CLIs + Oh My Hermes)
-2. Tell Hermes: `deploy this project to Vercel` — it runs `deploy-to-vercel`
+2. Tell Hermes: `deploy this project to Cloudflare` — it runs `deploy-to-cloudflare`
 3. After deploy: tell Hermes: `run post-deploy-followup` — it health checks and notifies you
 4. Create a GitHub issue manually — tell Hermes: `implement issue #1` — it picks it up, implements, creates PR, reviews, and asks for your approval

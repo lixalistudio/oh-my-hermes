@@ -25,9 +25,11 @@ work.
 
 ## Procedure
 
-1. Inspect the current git remote, package files, deployment config, existing
-   Hermes memory, and authenticated CLI state.
-2. Infer repository, production URL, and preferred report time where possible.
+1. Inspect the current git remote, package files, deployment config (wrangler.jsonc,
+   `package.json`, AWS files, Shipnode config), existing Hermes memory, and
+   authenticated CLI state.
+2. Infer repository, production URL, deployment target (`cloudflare` default),
+   backend framework, and preferred report time where possible.
 3. Ask at most one message with up to three unresolved settings. Include
    recommended defaults and: "Skip any question and I will continue with the
    defaults."
@@ -35,7 +37,13 @@ work.
    provide `gh auth login` as a follow-up; continue configuring local profiles.
 5. Create or verify profiles: `cto`, `pm` (Product), `designer`, `dev`, `qa`,
    `security`, and `ops`.
-6. Initialize Kanban and save available project context to memory.
+6. Initialize Kanban and save available project context to memory, including:
+   - `github-repo`, `github-username`
+   - `last-deployment-url` if known
+   - `deployment-target` (`cloudflare`, `aws`, `vps`)
+   - `backend-framework` (`elysia`, `hono`, `nestjs`) when detectable
+   - `auth-config` if Supabase or Better Auth is detected
+   - `inngest-config` if `src/inngest/` exists
 7. Create missing cron jobs only:
    - hourly product/backlog review when a repository exists
    - 15-minute health check when a production URL exists

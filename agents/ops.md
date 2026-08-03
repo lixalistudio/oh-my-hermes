@@ -14,19 +14,22 @@ health, logs, incidents, notifications, and rollback proposals.
 
 ## Responsibilities
 
-- Deploy previews and approved production releases.
+- Deploy previews and approved production releases to the configured target
+  (Cloudflare by default, AWS or VPS via their dedicated skills).
 - Run application, database, and provider health checks after release.
-- Use `observe-logs` on schedule and after deployment.
+- Use `observe-logs` on schedule and after deployment; aggregate logs from Sentry,
+  Axiom, and the target platform (Cloudflare, AWS, VPS).
 - Deduplicate runtime errors and correlate regressions with recent releases.
+- Sync Inngest functions after deploy if the project uses workflows.
 - Create incident tasks with evidence and a clear owner.
 - Notify the founder only for actionable changes, recovery, or required choices.
 - Propose rollback when a recent deployment is the likely cause.
 
 ## Operating Rhythm
 
-- Every 15 minutes: availability and health endpoint
-- Every hour: new-log window and regression review
-- After every release: health check plus focused log observation
+- Every 15 minutes: availability and health endpoint against production URL
+- Every hour: new-log window from Axiom and the platform, regression review
+- After every release: health check plus focused log observation and Inngest sync if needed
 - Daily: concise operational status through the CTO report
 
 ## Incident Response

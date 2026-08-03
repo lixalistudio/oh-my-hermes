@@ -103,11 +103,12 @@ can be connected later; they do not block product discovery and building.
 | Step | What to do | What you get |
 |---|---|---|
 | 1 | Install Hermes + connect Telegram | A bot you can message |
-| 2 | Run install.sh | 36 skills and 6 workflows loaded |
+| 2 | Run install.sh | Studio skills, workflows, and agents loaded |
 | 3 | Message: "set up the CTO loop" | Bot guides the full setup in chat |
 | 4 | Connect GitHub when useful | Issues and PR delivery enabled |
 | 5 | Add production URL after deploy | Health and log observation enabled |
-| 6 | `/goal` command | Agent stays focused across long sessions |
+| 6 | Connect Inngest when workflows are needed | Async jobs and scheduled functions |
+| 7 | `/goal` command | Agent stays focused across long sessions |
 | — | Autonomous from here | Product review, daily report, recurring security and logs |
 
 ---
@@ -135,10 +136,14 @@ can be connected later; they do not block product discovery and building.
 | `choose-engine` | Routes tasks to Hermes, Claude Code, or Codex |
 | `implement-with-claude-code` | Scaffolds Claude Code with full context + scope constraints |
 | `implement-with-codex` | Scaffolds Codex for targeted single-file fixes |
-| `deploy-to-vercel` | Pre-deploy checks → deploy → capture URL |
-| `connect-supabase` | Links Supabase, pushes migrations, sets Vercel env vars |
-| `setup-monitoring` | Configures Sentry + Uptime Kuma |
-| `health-check` | Calls `/api/health`, validates response, checks Supabase + Vercel logs |
+| `deploy-to-cloudflare` | Deploy frontend to Pages or backend to Workers via Wrangler |
+| `deploy-to-aws` | Deploy to Elastic Beanstalk / Lambda / ECS when Cloudflare is not suitable |
+| `deploy-to-vps` | Deploy a Node.js service to a custom VPS via Shipnode |
+| `connect-supabase` | Links Supabase, pushes migrations, sets platform env vars |
+| `setup-better-auth` | Configures Better Auth with API-key support when B2B/integrations are needed |
+| `setup-inngest` | Wires Inngest event keys and syncs functions after deploy |
+| `setup-monitoring` | Configures Sentry, Axiom, and Better Stack |
+| `health-check` | Calls `/api/health`, validates response, checks platform logs and DB status |
 | `send-notification` | Sends Slack webhook with deployment or status info |
 | `post-deploy-followup` | Health check + deployment log + notification + summary |
 | `manage-github-issues` | Triage, create, label, assign, and close GitHub issues |
@@ -293,9 +298,9 @@ Owns Done + active monitoring. Handles everything infrastructure.
 **What triggers it:** After QA approval, and on a 15-minute health-check cron.
 
 **What it does:**
-- Deploys to Vercel (production and preview)
-- Runs a three-layer health check after every deploy: app endpoint (`/api/health`), Supabase connection, Vercel logs scan
-- Monitors production every 15 minutes — checks HTTP status, response time, Supabase query latency, log errors
+- Ops deploys to the configured target: Cloudflare Pages/Workers by default, or AWS / VPS via their dedicated skills
+- Runs a three-layer health check after every deploy: app endpoint (`/api/health`), database/dependencies, platform logs
+- Monitors production every 15 minutes — checks HTTP status, response time, dependency latency, and error signals
 - Runs `observe-logs` hourly, groups duplicate failures, and correlates regressions with releases
 - Sends you a Slack/Telegram notification after every deploy and on any incident
 - On incident: retries once after 60 seconds, identifies which layer failed, pulls logs for context, alerts you in plain language — never pastes raw logs or stack traces
@@ -322,9 +327,9 @@ hermes: PRODUCT_BRIEF.md and DESIGN.md are ready. Starting the first complete
 
 **Deploy after implementing:**
 ```
-you: deploy this to Vercel
+you: deploy this to Cloudflare
 hermes: Running pre-deploy checklist…
-hermes: Deploying… done. URL: https://myapp.vercel.app
+hermes: Deploying… done. URL: https://myapp.pages.dev
 hermes: Health check: PASS (200ms)
 hermes: Notification sent to Slack.
 ```
@@ -346,18 +351,23 @@ hermes: Understood. Switching Dev Agent to issue #38.
 
 ---
 
-## Default stack
+## Default stack (Lixali Studio)
 
-| Layer | Default | Alternative |
+|| Layer | Default | Notes |
 |---|---|---|
-| Frontend / full-stack | Vercel | Railway, Render |
-| Database | Supabase PostgreSQL | PlanetScale, Neon |
-| Auth | Supabase Auth | Clerk, Auth.js |
-| Error tracking | Sentry | LogRocket |
-| Uptime monitoring | Uptime Kuma | Better Uptime |
-| Notifications | Slack webhook | Telegram, Email |
+|| Web app frontend | React + Vite | SPA / PWA style, deployed to Cloudflare Pages |
+|| Marketing/blog frontend | Astro | Static + server islands, deployed to Cloudflare Pages |
+|| Backend | Elysia (default) / Hono / NestJS | Cloudflare Workers for light backends and MVPs |
+|| Database | Cloudflare D1 + Drizzle | SQLite on the edge; Supabase PostgreSQL when needed |
+|| Object storage | Cloudflare R2 | S3-compatible |
+|| Auth | Supabase Auth | Better Auth for B2B, API keys, multi-provider |
+|| Background workflows | Inngest | Async jobs, scheduled functions, webhooks |
+|| Error tracking | Sentry | Via Toucan on Workers or SDK on Vite/Astro |
+|| Log aggregation | Axiom | Centralized structured logs |
+|| Uptime / alerting | Better Stack | Heartbeat + incident escalation |
+|| Notifications | Slack webhook | Telegram fallback |
 
-All pluggable. Each skill documents how to substitute.
+Alternative targets (AWS, custom VPS) are available via dedicated skills. Each skill documents how to substitute.
 
 ---
 
@@ -380,7 +390,8 @@ bash /tmp/oh-my-hermes/install.sh
 
 Oh My Hermes itself is not deployed as an app. It installs skills, workflows,
 agents, and scripts into Hermes. Your product deploys through its own platform
-such as Vercel; Docker is not part of the default production path.
+such as Cloudflare Pages/Workers (default), AWS, or a custom VPS; Docker is not
+part of the default production path.
 
 ### Optional credentials, only when needed
 
@@ -409,7 +420,7 @@ Seedance requests show the payload and estimated cost before approval.
 | Script | What it does |
 |---|---|
 | `install.sh` | Installs all skills, workflows, and agent definitions |
-| `scripts/bootstrap.sh` | Creates `AGENTS.md`, `.env.example`, health endpoint, and a Next.js health endpoint only when Next.js is detected |
+| `scripts/bootstrap.sh` | Creates `AGENTS.md`, `.env.example`, health endpoint tailored to Vite, Astro, Elysia, Hono, NestJS, or Express |
 | `scripts/setup-cto.sh` | Creates profiles, initializes kanban, schedules crons after explicit confirmation |
 | `scripts/setup-integrations.sh` | Securely configures optional OpenAI, Buffer, and Seedance credentials |
 | `scripts/server-bootstrap.sh` | Fresh server setup for Hermes + Oh My Hermes + Telegram |
@@ -455,11 +466,12 @@ See [docs/architecture.md](docs/architecture.md) for detail.
 
 ## Roadmap
 
-**V1 — current**
-36 skills, 7 agents, 6 workflows, optional-question onboarding, project
+V1 — current
+Studio skills, 7 agents, 6 workflows, optional-question onboarding, project
 switching, status, dead-letter recovery, product design, computer use policy,
 recurring security and log observation, creative launch production, fresh-server
-setup, Vercel + Supabase + GitHub delivery.
+setup, Cloudflare-first delivery with AWS/VPS alternatives, Inngest workflows,
+Supabase/Better Auth, and GitHub delivery.
 
 **V2 — planned**
 Staging-to-production promotion, broader provider adapters, and more complete

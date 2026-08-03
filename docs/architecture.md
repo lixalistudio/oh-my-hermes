@@ -16,7 +16,9 @@ lifecycle.
 Understand -> Design -> Build -> Check -> Ship -> Learn
 ```
 
-The CTO coordinates seven profiles:
+The CTO coordinates seven profiles. The default Lixali Studio stack is
+Cloudflare-first, with provider-specific skills for AWS and custom VPS when a
+project needs them.
 
 | Profile | Responsibility |
 |---|---|
@@ -30,6 +32,35 @@ The CTO coordinates seven profiles:
 
 Computer Use is a shared guarded skill. GitHub is a delivery surface. Neither is
 a separate agent or the center of the architecture.
+
+## Default Tech Stack (Lixali Studio)
+
+| Layer | Default | Notes |
+|---|---|---|
+| Web app frontend | React + Vite | Cloudflare Pages |
+| Marketing/blog frontend | Astro | Cloudflare Pages |
+| Backend | Elysia (default) / Hono / NestJS | Cloudflare Workers for light backends and MVPs |
+| Database | Cloudflare D1 + Drizzle | Supabase PostgreSQL when needed |
+| Object storage | Cloudflare R2 | S3-compatible |
+| Auth | Supabase Auth | Better Auth for B2B, API keys, multi-provider |
+| Background workflows | Inngest | Async jobs, scheduled functions, webhooks |
+| Error tracking | Sentry | Toucan on Workers or SDK on Vite/Astro |
+| Log aggregation | Axiom | Structured logs from Workers, Pages, and VPS |
+| Uptime / alerting | Better Stack | Heartbeat + incident escalation |
+
+## Deployment Targets
+
+The default target is Cloudflare. Each target has a dedicated skill; the agent
+chooses the one matching the project configuration and environment variables:
+
+- **Cloudflare:** `deploy-to-cloudflare` — Pages for frontends, Workers for
+  backends. Uses Wrangler and `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`.
+- **AWS:** `deploy-to-aws` — Elastic Beanstalk, Lambda, or ECS depending on
+  `AWS_DEPLOYMENT_TARGET` and project shape.
+- **Custom VPS:** `deploy-to-vps` — Node.js service deployed via
+  [Shipnode](https://github.com/devalade/shipnode).
+
+Hermes memory key `deployment-target` records the active target per project.
 
 ## State
 
@@ -84,6 +115,7 @@ task and request a decision instead of continuing busywork.
 | `product-brief-[project]` | Product | Compact product context |
 | `implementation-spec-[feature]` | Designer | Engineering handoff summary |
 | `last-deployment-url` | deploy skill | Current release target |
+| `deployment-target` | deploy skill | `cloudflare` \| `aws` \| `vps` |
 | `log-observer-state` | Ops | Cursor, fingerprints, and incident mapping |
 | `pending-approval` | CTO | Reviewed release awaiting founder choice |
 | `notification-log` | notification skill | Delivery history |
