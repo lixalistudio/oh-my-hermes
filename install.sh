@@ -117,11 +117,24 @@ if [ -d "$WORK_DIR/workflows" ]; then
   done
 fi
 
+# Install healthcheck templates
+TEMPLATES_DIR="$HERMES_DIR/templates"
+HEALTHCHECK_INSTALLED=0
+if [ -d "$WORK_DIR/templates/healthcheck" ]; then
+  mkdir -p "$TEMPLATES_DIR/healthcheck"
+  for tpl in "$WORK_DIR/templates/healthcheck"/*.ts "$WORK_DIR/templates/healthcheck"/*.js; do
+    [ -f "$tpl" ] || continue
+    cp "$tpl" "$TEMPLATES_DIR/healthcheck/"
+    HEALTHCHECK_INSTALLED=$((HEALTHCHECK_INSTALLED + 1))
+  done
+fi
+
 echo ""
 echo "[OK] Skills installed:    $SKILLS_INSTALLED → $SKILLS_DIR"
 echo "[OK] Workflows installed: $WORKFLOWS_INSTALLED → $WORKFLOWS_DIR"
 echo "[OK] Agents installed:    $AGENTS_INSTALLED → $AGENTS_DIR"
 echo "[OK] Scripts installed:   $SCRIPTS_INSTALLED → $SCRIPTS_DIR"
+echo "[OK] Healthcheck templates: $HEALTHCHECK_INSTALLED → $TEMPLATES_DIR/healthcheck"
 echo ""
 echo "Next steps:"
 echo "  1. git clone $OH_MY_HERMES_REPO /tmp/oh-my-hermes  # if you do not already have the repo"
