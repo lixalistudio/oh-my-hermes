@@ -355,7 +355,7 @@ ensure_cron() {
   return 0
 }
 
-if [ -n "$PRODUCTION_URL" ]; then
+if [ -n "${PRODUCTION_URL:-}" ]; then
   ensure_cron "oh-my-hermes-health" "*/15 * * * *" \
     "Use failure-recovery for project ${PROJECT_SLUG:-default}: run health-check on $PRODUCTION_URL and save a dead letter if the check fails."
   ensure_cron "oh-my-hermes-log-observer" "15 * * * *" \
