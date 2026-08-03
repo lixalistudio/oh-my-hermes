@@ -366,7 +366,7 @@ else
   echo "         hermes cron create --name 'oh-my-hermes health-check' --deliver local '*/15 * * * *' 'Run health-check on https://your-production-url.example'"
 fi
 
-if [ -n "$GITHUB_REPO" ]; then
+if [ -n "${GITHUB_REPO:-}" ]; then
   ensure_cron "oh-my-hermes-product-review" "0 * * * *"     "Use failure-recovery for project ${PROJECT_SLUG:-default}: review active product work and actionable GitHub issues for $GITHUB_REPO. Keep one product outcome active and do not treat issue volume as the roadmap."
   ensure_cron "oh-my-hermes-security-daily" "30 8 * * *" \
     "Use failure-recovery for project ${PROJECT_SLUG:-default}: run security-review daily mode for $GITHUB_REPO: check tracked secret exposure and new Critical dependency advisories. Deduplicate known findings."
@@ -400,7 +400,7 @@ else
   echo "  hermes kanban watch       # open live kanban board"
   echo ""
   echo "Then lock persistent focus (Hermes v0.13+):"
-  if [ -n "$GITHUB_REPO" ]; then
+  if [ -n "${GITHUB_REPO:-}" ]; then
     echo "  /goal Build, launch, operate, and improve the product in $GITHUB_REPO."
     echo "        Keep one outcome active, verify it, and ask only at irreversible boundaries."
   else
